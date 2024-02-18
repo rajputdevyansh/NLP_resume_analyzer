@@ -8,3 +8,4 @@ streamlit-tags
 pafy
 plotly
 pymysql
+youtube-dl
