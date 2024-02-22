@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import base64,random
 import time,datetime
-#libraries to parse the resume pdf files
 from pyresparser import ResumeParser
 from pdfminer3.layout import LAParams, LTTextBox
 from pdfminer3.pdfpage import PDFPage
@@ -13,24 +12,13 @@ import io,random
 from streamlit_tags import st_tags
 from PIL import Image
 import pymysql
-from Courses import ds_course,web_course,android_course,ios_course,uiux_course,resume_videos,interview_videos
-import pafy #for uploading youtube videos
-import plotly.express as px #to create visualisations at the admin session
+from Courses import ds_course,web_course,android_course,ios_course,uiux_course
 import nltk
 nltk.download('stopwords')
 
-def fetch_yt_video(link):
-    video = pafy.new(link)
-    return video.title
-
 def get_table_download_link(df,filename,text):
-    """Generates a link allowing the data in a given panda dataframe to be downloaded
-    in:  dataframe
-    out: href string
-    """
     csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-    # href = f'<a href="data:file/csv;base64,{b64}">Download Report</a>'
+    b64 = base64.b64encode(csv.encode()).decode()
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
@@ -47,7 +35,6 @@ def pdf_reader(file):
             print(page)
         text = fake_file_handle.getvalue()
 
-    # close open handles
     converter.close()
     fake_file_handle.close()
     return text
@@ -55,7 +42,6 @@ def pdf_reader(file):
 def show_pdf(file_path):
     with open(file_path, "rb") as f:
         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-    # pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf">'
     pdf_display = F'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>'
     st.markdown(pdf_display, unsafe_allow_html=True)
 
@@ -86,26 +72,23 @@ def insert_data(name,email,res_score,timestamp,no_of_pages,reco_field,cand_level
 
 st.set_page_config(
    page_title="AI Resume Analyzer",
-   page_icon='resume_analyzer\Logo\logo2.png',
+   page_icon="resume_analyzer\Logo\logo2.png",
 )
 
 def run():
-    img = Image.open('resume_analyzer\Logo\logo2.png')
-    # img = img.resize((250,250))
+    img = Image.open("resume_analyzer\Logo\Lresume.png")
+    # img = img.resize((370,300))
     st.image(img)
     st.title("AI Resume Analyser")
     st.sidebar.markdown("# Choose User")
     activities = ["User", "Admin"]
     choice = st.sidebar.selectbox("Choose among the given options:", activities)
-    link = '[©Developed by Dr,Briit](https://www.linkedin.com/in/mrbriit/)'
+    link = '[©Developed by Devyansh Rajput](https://www.devyanshrajput.live)'
     st.sidebar.markdown(link, unsafe_allow_html=True)
 
-
-    # Create the DB
     db_sql = """CREATE DATABASE IF NOT EXISTS resume_analyzer;"""
     cursor.execute(db_sql)
 
-    # Create table
     DB_table_name = 'user_data'
     table_sql = "CREATE TABLE IF NOT EXISTS " + DB_table_name + """
                     (ID INT NOT NULL AUTO_INCREMENT,
@@ -123,20 +106,19 @@ def run():
                     """
     cursor.execute(table_sql)
     if choice == 'User':
-        st.markdown('''<h5 style='text-align: left; color: #021659;'> Upload your resume, and get smart recommendations</h5>''',
+        st.markdown('''<h5 style='text-align: left; color: #FFD700;'> Upload your resume, and get smart recommendations</h5>''',
                     unsafe_allow_html=True)
         pdf_file = st.file_uploader("Choose your Resume", type=["pdf"])
         if pdf_file is not None:
             with st.spinner('Uploading your Resume...'):
                 time.sleep(4)
-            save_image_path = './Uploaded_Resumes/'+pdf_file.name
-            with open(save_image_path, "wb") as f:
+            save_resume_path = 'resume_analyzer/Uploaded_Resumes/'+pdf_file.name
+            with open(save_resume_path, "wb") as f:
                 f.write(pdf_file.getbuffer())
-            show_pdf(save_image_path)
-            resume_data = ResumeParser(save_image_path).get_extracted_data()
+            show_pdf(save_resume_path)
+            resume_data = ResumeParser(save_resume_path).get_extracted_data()
             if resume_data:
-                ## Get the whole resume data
-                resume_text = pdf_reader(save_image_path)
+                resume_text = pdf_reader(save_resume_path)
 
                 st.header("**Resume Analysis**")
                 st.success("Hello "+ resume_data['name'])
@@ -252,31 +234,31 @@ def run():
                     resume_score = resume_score+20
                     st.markdown('''<h5 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Objective</h4>''',unsafe_allow_html=True)
                 else:
-                    st.markdown('''<h5 style='text-align: left; color: #000000;'>[-] Please add your career objective, it will give your career intension to the Recruiters.</h4>''',unsafe_allow_html=True)
+                    st.markdown('''<h5 style='text-align: left; color: #ff0000;'>[-] Please add your career objective, it will give your career intension to the Recruiters.</h4>''',unsafe_allow_html=True)
 
                 if 'Declaration'  in resume_text:
                     resume_score = resume_score + 20
                     st.markdown('''<h5 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Delcaration/h4>''',unsafe_allow_html=True)
                 else:
-                    st.markdown('''<h5 style='text-align: left; color: #000000;'>[-] Please add Declaration. It will give the assurance that everything written on your resume is true and fully acknowledged by you</h4>''',unsafe_allow_html=True)
+                    st.markdown('''<h5 style='text-align: left; color: #ff0000;'>[-] Please add Declaration. It will give the assurance that everything written on your resume is true and fully acknowledged by you</h4>''',unsafe_allow_html=True)
 
                 if 'Hobbies' or 'Interests'in resume_text:
                     resume_score = resume_score + 20
                     st.markdown('''<h5 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Hobbies</h4>''',unsafe_allow_html=True)
                 else:
-                    st.markdown('''<h5 style='text-align: left; color: #000000;'>[-] Please add Hobbies. It will show your persnality to the Recruiters and give the assurance that you are fit for this role or not.</h4>''',unsafe_allow_html=True)
+                    st.markdown('''<h5 style='text-align: left; color: #ff0000;'>[-] Please add Hobbies. It will show your persnality to the Recruiters and give the assurance that you are fit for this role or not.</h4>''',unsafe_allow_html=True)
 
                 if 'Achievements' in resume_text:
                     resume_score = resume_score + 20
                     st.markdown('''<h5 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Achievements </h4>''',unsafe_allow_html=True)
                 else:
-                    st.markdown('''<h5 style='text-align: left; color: #000000;'>[-] Please add Achievements. It will show that you are capable for the required position.</h4>''',unsafe_allow_html=True)
+                    st.markdown('''<h5 style='text-align: left; color: #ff0000;'>[-] Please add Achievements. It will show that you are capable for the required position.</h4>''',unsafe_allow_html=True)
 
                 if 'Projects' in resume_text:
                     resume_score = resume_score + 20
                     st.markdown('''<h5 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Projects</h4>''',unsafe_allow_html=True)
                 else:
-                    st.markdown('''<h5 style='text-align: left; color: #000000;'>[-] Please add Projects. It will show that you have done work related the required position or not.</h4>''',unsafe_allow_html=True)
+                    st.markdown('''<h5 style='text-align: left; color: #ff0000;'>[-] Please add Projects. It will show that you have done work related the required position or not.</h4>''',unsafe_allow_html=True)
 
                 st.subheader("**Resume Score📝**")
                 st.markdown(
@@ -302,36 +284,18 @@ def run():
                               str(resume_data['no_of_pages']), reco_field, cand_level, str(resume_data['skills']),
                               str(recommended_skills), str(rec_course))
 
-
-                ## Resume writing video
-                st.header("**Bonus Video for Resume Writing Tips💡**")
-                resume_vid = random.choice(resume_videos)
-                res_vid_title = fetch_yt_video(resume_vid)
-                st.subheader("✅ **"+res_vid_title+"**")
-                st.video(resume_vid)
-
-
-
-                ## Interview Preparation Video
-                st.header("**Bonus Video for Interview Tips💡**")
-                interview_vid = random.choice(interview_videos)
-                int_vid_title = fetch_yt_video(interview_vid)
-                st.subheader("✅ **" + int_vid_title + "**")
-                st.video(interview_vid)
-
                 connection.commit()
             else:
                 st.error('Something went wrong..')
     else:
         ## Admin Side
         st.success('Welcome to Admin Side')
-        # st.sidebar.subheader('**ID / Password Required!**')
 
         ad_user = st.text_input("Username")
         ad_password = st.text_input("Password", type='password')
         if st.button('Login'):
-            if ad_user == 'briit' and ad_password == 'briit123':
-                st.success("Welcome Dr Briit !")
+            if ad_user == 'devyansh' and ad_password == 'dell8755':
+                st.success("Welcome Devyansh !")
                 # Display Data
                 cursor.execute('''SELECT*FROM user_data''')
                 data = cursor.fetchall()
@@ -341,27 +305,6 @@ def run():
                                                  'Recommended Course'])
                 st.dataframe(df)
                 st.markdown(get_table_download_link(df,'User_Data.csv','Download Report'), unsafe_allow_html=True)
-                ## Admin Side Data
-                query = 'select * from user_data;'
-                plot_data = pd.read_sql(query, connection)
-
-                ## Pie chart for predicted field recommendations
-                labels = plot_data.Predicted_Field.unique()
-                print(labels)
-                values = plot_data.Predicted_Field.value_counts()
-                print(values)
-                st.subheader("**Pie-Chart for Predicted Field Recommendation**")
-                fig = px.pie(df, values=values, names=labels, title='Predicted Field according to the Skills')
-                st.plotly_chart(fig)
-
-                ### Pie chart for User's👨‍💻 Experienced Level
-                labels = plot_data.User_level.unique()
-                values = plot_data.User_level.value_counts()
-                st.subheader("**Pie-Chart for User's Experienced Level**")
-                fig = px.pie(df, values=values, names=labels, title="Pie-Chart📈 for User's👨‍💻 Experienced Level")
-                st.plotly_chart(fig)
-
-
             else:
                 st.error("Wrong ID & Password Provided")
 run()

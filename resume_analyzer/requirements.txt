@@ -5,7 +5,5 @@ pdfminer3
 pyresparser
 streamlit
 streamlit-tags
-pafy
-plotly
 pymysql
 youtube-dl
